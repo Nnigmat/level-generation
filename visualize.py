@@ -17,13 +17,21 @@ CELL_SPRITES: Dict[int, str] = {
     4: 'End',
 }
 
+CELL_WIDTH: int = 32
+CELL_HEIGHT: int = 67
 
-def generate_images(levels: List[LevelType]) -> None:
+
+def generate_images(levels: List[LevelType], width: int = 10, height: int = 10, amount: int = 10) -> None:
     """Generate images of levels based on the given levels
     and store them in output_dir
     """
     _clear()
-    print('hello')
+    image_width, image_height = width * CELL_WIDTH, height * CELL_HEIGHT
+
+    res: List[Image] = []
+    for i in range(amount):
+        image = Image.new('RGB', (image_width, image_height))
+        res.append()
 
 
 def _clear() -> None:

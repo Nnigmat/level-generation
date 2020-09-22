@@ -2,7 +2,7 @@ from typing import Dict, List
 from random import randint
 from pprint import pprint
 
-from visualize import hello
+from visualize import generate_images
 
 # Types
 LevelType = List[List[int]]
