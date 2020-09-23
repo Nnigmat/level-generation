@@ -2,13 +2,13 @@ from typing import Dict, List
 from random import randint
 from pprint import pprint
 
-from visualize import generate_images
+from visualize import generate_images, _clear
 
 # Types
 LevelType = List[List[int]]
 
 # Game level variables
-WIDTH: int = 10
+WIDTH: int = 20
 HEIGHT: int = 10
 N_CELL_TYPES: int = 5
 CELL_TYPES: Dict[int, str] = {
@@ -78,7 +78,9 @@ def get_best_levels(levels: List[LevelType], scores: List[int], amount: int = 2)
 
 if __name__ == '__main__':
     population: List[LevelType] = random_child(POPULATION_SIZE)
+    generate_images(population, width=WIDTH, height=HEIGHT)
 
+    '''
     # Main evolutionary algoritm loop
     for i in range(NUM_GENERATIONS):
         # Evaluate each member of the population
@@ -92,3 +94,4 @@ if __name__ == '__main__':
 
         # Mutate the generated level to POPULATION_SIZE
         population = list(map(mutate, [new_level] * POPULATION_SIZE))
+    '''
