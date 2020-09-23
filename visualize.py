@@ -15,8 +15,8 @@ CELL_SPRITES: Dict[int, str] = {
     0: Image.open(f'{cells_dir}/floor.png').convert('RGB'),
     1: Image.open(f'{cells_dir}/free.png').convert('RGB'),
     2: Image.open(f'{cells_dir}/wall.png').convert('RGB'),
-    3: 'Start',
-    4: 'End',
+    3: Image.open(f'{cells_dir}/start.png').convert('RGB'),
+    4: Image.open(f'{cells_dir}/end.png').convert('RGB'),
 }
 
 # Sprite resolution
@@ -35,7 +35,7 @@ def generate_images(levels: List[LevelType], width: int = 10, height: int = 10) 
         image = Image.new('RGBA', (image_width, image_height), (0, 0, 0, 0))
         for _i, row in enumerate(level):
             for _j, cell_type in enumerate(row):
-                if cell_type == 3 or cell_type == 4:
+                if cell_type is None:
                     continue
 
                 left = _j * CELL_WIDTH

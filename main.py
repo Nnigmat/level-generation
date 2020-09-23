@@ -119,23 +119,26 @@ def find_path(level: LevelType) -> LevelType:
     assert find_elem_position(level, START)
 
     path = [[None for i in range(WIDTH)] for j in range(HEIGHT)]
-    queue = deque(find_elem_position(level, START))
+    queue = deque()
+    queue.append(find_elem_position(level, START))
     visited = set()
 
     while len(queue) > 0:
         x, y = queue.popleft()
 
-        is_invalid_pos = x < 0 or y < 0
-        is_visited_cell = (x, y) in visited
-        is_wall = level[x][y] == WALL
-
-        if is_invalid_pos or is_visited_cell or is_wall:
+        if x < 0 or y < 0 or x >= len(level) or y >= len(level[0]):
             continue
 
-        queue.append((x - 1, y - 1))
-        queue.append((x - 1, y + 1))
-        queue.append((x + 1, y - 1))
-        queue.append((x + 1, y + 1))
+        if (x, y) in visited:
+            continue
+
+        if level[x][y] == WALL:
+            continue
+
+        queue.append((x - 1, y))
+        queue.append((x - 1, y))
+        queue.append((x, y - 1))
+        queue.append((x, y + 1))
 
         visited.add((x, y))
         path[x][y] = level[x][y]
