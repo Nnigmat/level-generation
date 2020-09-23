@@ -84,8 +84,20 @@ def fitness_function(level: LevelType) -> int:
 def crossover(level1: LevelType, level2: LevelType) -> LevelType:
     """Generate the new level based on two others 
     """
+    level = [[None for i in range(WIDTH)] for j in range(HEIGHT)]
+
     path1 = find_path(level1)
     path2 = find_path(level2)
+
+    place_start = False
+    path1_has_end = find_elem_position(path1, END)
+    path2_has_end = find_elem_position(path2, END)
+
+    for i, row1, row2 in enumerate(zip(path1, path2)):
+        for j, cell1, cell2 in enumerate(zip(row1, row2)):
+            pass
+
+    return level
 
 
 def mutate(level: LevelType) -> LevelType:
@@ -135,10 +147,16 @@ def find_path(level: LevelType) -> LevelType:
         if level[x][y] == WALL:
             continue
 
-        queue.append((x - 1, y))
-        queue.append((x - 1, y))
-        queue.append((x, y - 1))
-        queue.append((x, y + 1))
+        if level[x][y] == SPACE:
+            queue.append((x - 1, y))
+            queue.append((x + 1, y))
+            queue.append((x, y - 1))
+            queue.append((x, y + 1))
+
+        if level[x][y] in [FLOOR, START, END]:
+            queue.append((x - 1, y))
+            queue.append((x, y - 1))
+            queue.append((x, y + 1))
 
         visited.add((x, y))
         path[x][y] = level[x][y]
@@ -149,6 +167,10 @@ def find_path(level: LevelType) -> LevelType:
 if __name__ == '__main__':
     population: List[LevelType] = random_child(POPULATION_SIZE)
 
+    generate_images(list(map(find_path, population)),
+                    width=WIDTH, height=HEIGHT)
+
+    '''
     # Main evolutionary algoritm loop
     for i in range(NUM_GENERATIONS):
         # Evaluate each member of the population
@@ -162,3 +184,4 @@ if __name__ == '__main__':
 
         # Mutate the generated level to POPULATION_SIZE
         population = list(map(mutate, [new_level] * POPULATION_SIZE))
+    '''
