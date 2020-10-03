@@ -1,7 +1,9 @@
 from typing import Dict, List, Tuple, Optional
-from random import randint
+from random import randint, choice
 from pprint import pprint
 from collections import Counter, deque
+from copy import deepcopy
+from math import exp
 
 from visualize import generate_images, _clear
 
@@ -27,7 +29,7 @@ END = 4
 
 # Evolutionary algorithm variables
 POPULATION_SIZE: int = 10
-NUM_GENERATIONS: int = 10
+NUM_GENERATIONS: int = 100
 
 
 def flatten(l):
@@ -78,24 +80,34 @@ def fitness_function(level: LevelType) -> int:
     balance = 1 - sum([abs(count / total - 1 / (N_CELL_TYPES - 2))
                        for count in counts])
 
-    return balance
+    # The path have end
+    has_end = 1 if find_elem_position(find_path(level), END) is not None else 0
+
+    # Distance
+    distance = moves_to_reach_end(level) if has_end else 0
+    distance_score = 1 / (1 + exp(2.5 - 0.5 * distance))
+
+    return balance + has_end + distance_score
 
 
 def crossover(level1: LevelType, level2: LevelType) -> LevelType:
-    """Generate the new level based on two others 
+    """Generate the new level based on two others
     """
-    level = [[None for i in range(WIDTH)] for j in range(HEIGHT)]
-
     path1 = find_path(level1)
     path2 = find_path(level2)
 
-    place_start = False
-    path1_has_end = find_elem_position(path1, END)
-    path2_has_end = find_elem_position(path2, END)
+    level = deepcopy(path1)
 
-    for i, row1, row2 in enumerate(zip(path1, path2)):
-        for j, cell1, cell2 in enumerate(zip(row1, row2)):
-            pass
+    for i, rows in enumerate(zip(path1, path2)):
+        for j, cells in enumerate(zip(rows[0], rows[1])):
+            cell1, cell2 = cells
+            if cell1 is None and cell2 is not None and cell2 not in [START, END]:
+                level[i][j] = cell2
+
+            if cell1 is None and cell2 is None and cell2 not in [START, END]:
+                level[i][j] = choice((level1, level2))[i][j]
+            else:
+                level[i][j] = level1[i][j]
 
     return level
 
@@ -103,11 +115,23 @@ def crossover(level1: LevelType, level2: LevelType) -> LevelType:
 def mutate(level: LevelType) -> LevelType:
     """Mutate the level
     """
-    pass
+    res = deepcopy(level)
+
+    n_mutations = randint(1, 10)
+    while n_mutations > 0:
+        x, y = randint(0, HEIGHT - 1), randint(0, WIDTH - 1)
+
+        if res[x][y] == START or res[x][y] == END:
+            continue
+
+        res[x][y] = randint(0, 2)
+        n_mutations -= 1
+
+    return res
 
 
 def get_best_levels(levels: List[LevelType], scores: List[int], amount: int = 2) -> List[LevelType]:
-    """Get best levels based on scores 
+    """Get best levels based on scores
     """
     assert len(levels) == len(scores)
     assert len(levels) >= amount
@@ -164,17 +188,57 @@ def find_path(level: LevelType) -> LevelType:
     return path
 
 
+def moves_to_reach_end(level: LevelType) -> int:
+    """Get amount of cells between start and destination
+    """
+    assert level is not None
+
+    queue = deque()
+
+    x, y = find_elem_position(level, START)
+    queue.append((x, y, 0))
+    visited = set()
+
+    while len(queue) > 0:
+        x, y, count = queue.popleft()
+
+        if x < 0 or y < 0 or x >= len(level) or y >= len(level[0]):
+            continue
+
+        if (x, y) in visited:
+            continue
+
+        if level[x][y] == WALL:
+            continue
+
+        if level[x][y] == END:
+            return count
+
+        if level[x][y] == SPACE:
+            queue.append((x - 1, y, count + 1))
+            queue.append((x + 1, y, count + 1))
+            queue.append((x, y - 1, count + 1))
+            queue.append((x, y + 1, count + 1))
+
+        if level[x][y] in [FLOOR, START, END]:
+            queue.append((x - 1, y, count + 1))
+            queue.append((x, y - 1, count + 1))
+            queue.append((x, y + 1, count + 1))
+
+        visited.add((x, y))
+
+    return -1
+
+
 if __name__ == '__main__':
     population: List[LevelType] = random_child(POPULATION_SIZE)
 
-    generate_images(list(map(find_path, population)),
-                    width=WIDTH, height=HEIGHT)
-
-    '''
     # Main evolutionary algoritm loop
     for i in range(NUM_GENERATIONS):
         # Evaluate each member of the population
         scores = list(map(fitness_function, population))
+
+        print(f'Average score: {sum(scores) / len(scores)}')
 
         # Get 2 best levels
         level1, level2 = get_best_levels(population, scores)
@@ -183,5 +247,7 @@ if __name__ == '__main__':
         new_level = crossover(level1, level2)
 
         # Mutate the generated level to POPULATION_SIZE
-        population = list(map(mutate, [new_level] * POPULATION_SIZE))
-    '''
+        population = list(map(mutate, [new_level
+                                       for _ in range(POPULATION_SIZE)]))
+
+    generate_images(population, width=WIDTH, height=HEIGHT)
