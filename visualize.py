@@ -1,7 +1,8 @@
 from typing import Dict, List
 from PIL import Image
 from shutil import rmtree
-from os import mkdir, getcwd
+from os import mkdir, getcwd, walk
+from rich.progress import Progress
 
 # Dirs paths
 output_dir = getcwd() + '/generated_images'
@@ -31,21 +32,38 @@ def generate_images(levels: List[LevelType], width: int = 10, height: int = 10) 
     _clear()
     image_width, image_height = width * CELL_WIDTH, height * CELL_HEIGHT
 
-    for i, level in enumerate(levels):
-        image = Image.new('RGBA', (image_width, image_height), (0, 0, 0, 0))
-        for _i, row in enumerate(level):
-            for _j, cell_type in enumerate(row):
-                if cell_type is None:
-                    continue
+    with Progress() as progress:
+        task = progress.add_task(
+            total=len(levels), description="[bold yellow]Images generation...")
 
-                left = _j * CELL_WIDTH
-                upper = _i * CELL_HEIGHT
-                right = left + CELL_WIDTH
-                lower = upper + CELL_HEIGHT
+        for i, level in enumerate(levels):
+            image = Image.new(
+                'RGBA', (image_width, image_height), (0, 0, 0, 0))
+            for _i, row in enumerate(level):
+                for _j, cell_type in enumerate(row):
+                    if cell_type is None:
+                        continue
 
-                image.paste(CELL_SPRITES[cell_type],
-                            box=(left, upper, right, lower))
-        image.save(f'{output_dir}/{i}.png')
+                    left = _j * CELL_WIDTH
+                    upper = _i * CELL_HEIGHT
+                    right = left + CELL_WIDTH
+                    lower = upper + CELL_HEIGHT
+
+                    image.paste(CELL_SPRITES[cell_type],
+                                box=(left, upper, right, lower))
+            image.save(f'{output_dir}/{i}.png')
+            progress.advance(task)
+
+
+def generate_gif(dir: str = output_dir) -> None:
+    """Generate gif from .png files in directory
+    """
+    paths = sorted(list(walk(dir))[-1][-1])
+    imgs = [Image.open(f'{dir}/{path}')
+            for path in paths if path.endswith('.png')]
+
+    imgs[0].save(f'{output_dir}/result.gif', save_all=True,
+                 append_images=imgs[1:], optimize=False, duration=100, loop=0)
 
 
 def _clear() -> None:
@@ -53,3 +71,7 @@ def _clear() -> None:
     """
     rmtree(output_dir, ignore_errors=True)
     mkdir(output_dir)
+
+
+if __name__ == "__main__":
+    generate_gif()

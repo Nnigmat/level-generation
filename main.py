@@ -1,11 +1,15 @@
 from typing import Dict, List, Tuple, Optional
 from random import randint, choice
-from pprint import pprint
 from collections import Counter, deque
 from copy import deepcopy
 from math import exp
+from asciichartpy import plot
+from rich.console import Console
+from rich.progress import track
 
-from visualize import generate_images, _clear
+from visualize import generate_images, generate_gif
+
+console = Console()
 
 # Types
 LevelType = List[List[int]]
@@ -30,6 +34,8 @@ END = 4
 # Evolutionary algorithm variables
 POPULATION_SIZE: int = 10
 NUM_GENERATIONS: int = 100
+
+N_MUTATIONS: int = 10
 
 
 def flatten(l):
@@ -117,7 +123,7 @@ def mutate(level: LevelType) -> LevelType:
     """
     res = deepcopy(level)
 
-    n_mutations = randint(1, 10)
+    n_mutations = randint(1, N_MUTATIONS)
     while n_mutations > 0:
         x, y = randint(0, HEIGHT - 1), randint(0, WIDTH - 1)
 
@@ -172,13 +178,16 @@ def find_path(level: LevelType) -> LevelType:
             continue
 
         if level[x][y] == SPACE:
-            queue.append((x - 1, y))
+            if level[x-1][y] == SPACE:
+                queue.append((x - 1, y))
             queue.append((x + 1, y))
             queue.append((x, y - 1))
             queue.append((x, y + 1))
 
         if level[x][y] in [FLOOR, START, END]:
-            queue.append((x - 1, y))
+            if level[x-1][y] == SPACE:
+                queue.append((x - 1, y))
+
             queue.append((x, y - 1))
             queue.append((x, y + 1))
 
@@ -230,15 +239,72 @@ def moves_to_reach_end(level: LevelType) -> int:
     return -1
 
 
+def postprocess(levels: List[LevelType]) -> List[LevelType]:
+    """Change cells that cannot be reached to walls.
+    If below the SPACE cell is WALL, change cell to FLOOR
+    """
+    res = []
+
+    for level in levels:
+        path = find_path(level)
+        for i, row in enumerate(path):
+            for j, cell in enumerate(row):
+                if cell is None:
+                    path[i][j] = WALL
+                elif cell == SPACE and (i + 1 == HEIGHT or path[i + 1][j] == WALL or path[i + 1][j] is None):
+                    path[i][j] = FLOOR
+
+        res.append(path)
+
+    return res
+
+
+def prompt():
+    """Get values for generation
+    """
+    global HEIGHT, WIDTH, POPULATION_SIZE, NUM_GENERATIONS, N_MUTATIONS
+
+    console.print('[bold]Welcome to Level generator[/bold]\n')
+
+    if console.input('[bold]Use default values?[/bold] \[y/n] ').strip() in ['y', '']:
+        console.print()
+        return
+
+    dims = console.input(
+        '[bold]Map dimensions (height width):[/bold] [i](default: 10 20)[/i] ').strip()
+    pop_size = console.input(
+        '[bold]Population size: [/bold] (default: 10) ').strip()
+    n_generations = console.input(
+        '[bold]Number of generations: [/bold] (default: 100) ').strip()
+    n_mutations = console.input(
+        '[bold]Number of mutations:[/bold] (default: 10)').strip()
+
+    if dims:
+        HEIGHT, WIDTH = list(map(int, dims.split()))
+
+    if pop_size:
+        POPULATION_SIZE = int(pop_size)
+
+    if n_generations:
+        NUM_GENERATIONS = int(n_generations)
+
+    if n_mutations:
+        N_MUTATIONS = int(n_mutations)
+
+    console.print()
+
+
 if __name__ == '__main__':
+    prompt()
+
     population: List[LevelType] = random_child(POPULATION_SIZE)
+    best_members: List[LevelType] = []
+    avg_scores: float = []
 
     # Main evolutionary algoritm loop
-    for i in range(NUM_GENERATIONS):
+    for i in track(range(NUM_GENERATIONS), description="[bold red]Genetic algorithm..."):
         # Evaluate each member of the population
         scores = list(map(fitness_function, population))
-
-        print(f'Average score: {sum(scores) / len(scores)}')
 
         # Get 2 best levels
         level1, level2 = get_best_levels(population, scores)
@@ -250,4 +316,12 @@ if __name__ == '__main__':
         population = list(map(mutate, [new_level
                                        for _ in range(POPULATION_SIZE)]))
 
-    generate_images(population, width=WIDTH, height=HEIGHT)
+        # Get the best member of each population
+        best_members.append(level1)
+        avg_scores.append(sum(scores) / len(scores))
+
+    ready_levels = postprocess(best_members)
+    generate_images(ready_levels, width=WIDTH, height=HEIGHT)
+    generate_gif()
+
+    console.print('\n' + plot(avg_scores))
