@@ -6,6 +6,7 @@ from math import exp
 from asciichartpy import plot
 from rich.console import Console
 from rich.progress import track
+from sys import exit
 
 from visualize import generate_images, generate_gif
 
@@ -91,9 +92,9 @@ def fitness_function(level: LevelType) -> int:
 
     # Distance
     distance = moves_to_reach_end(level) if has_end else 0
-    distance_score = 1 / (1 + exp(2.5 - 0.5 * distance))
+    # distance_score = 5 / (1 + exp(HEIGHT * WIDTH // 20 - distance))
 
-    return balance + has_end + distance_score
+    return balance + has_end + distance
 
 
 def crossover(level1: LevelType, level2: LevelType) -> LevelType:
@@ -198,7 +199,8 @@ def find_path(level: LevelType) -> LevelType:
 
 
 def moves_to_reach_end(level: LevelType) -> int:
-    """Get amount of cells between start and destination
+    """Get amount of cells between start and destination.
+    It doesn't give the shortest path between points. 
     """
     assert level is not None
 
@@ -277,7 +279,7 @@ def prompt():
     n_generations = console.input(
         '[bold]Number of generations: [/bold] (default: 100) ').strip()
     n_mutations = console.input(
-        '[bold]Number of mutations:[/bold] (default: 10)').strip()
+        '[bold]Number of mutations:[/bold] (default: 10) ').strip()
 
     if dims:
         HEIGHT, WIDTH = list(map(int, dims.split()))
@@ -300,6 +302,7 @@ if __name__ == '__main__':
     population: List[LevelType] = random_child(POPULATION_SIZE)
     best_members: List[LevelType] = []
     avg_scores: float = []
+    best_scores: float = []
 
     # Main evolutionary algoritm loop
     for i in track(range(NUM_GENERATIONS), description="[bold red]Genetic algorithm..."):
@@ -312,16 +315,21 @@ if __name__ == '__main__':
         # Generate the new level based on 2 best
         new_level = crossover(level1, level2)
 
+        new_population = [level1, level2] + \
+            [new_level for i in range(POPULATION_SIZE - 2)]
+        # res = postprocess([new_level for _ in range(POPULATION_SIZE)])
+
         # Mutate the generated level to POPULATION_SIZE
-        population = list(map(mutate, [new_level
-                                       for _ in range(POPULATION_SIZE)]))
+        population = list(map(mutate, new_population))
 
         # Get the best member of each population
         best_members.append(level1)
         avg_scores.append(sum(scores) / len(scores))
+        best_scores.append(max(scores))
 
     ready_levels = postprocess(best_members)
     generate_images(ready_levels, width=WIDTH, height=HEIGHT)
     generate_gif()
 
-    console.print('\n' + plot(avg_scores))
+    console.print('\n[bold]Average scores\n' + plot(avg_scores))
+    console.print('\n[bold]Best scores\n' + plot(best_scores))
